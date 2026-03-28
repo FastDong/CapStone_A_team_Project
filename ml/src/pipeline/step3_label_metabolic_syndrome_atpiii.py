@@ -11,8 +11,8 @@ NUTRITION_LABEL_FILE = DATA_INTERIM_DIR / "nhanes_with_nutrition_intake_label.cs
 OUT_FILE = DATA_PROCESSED_DIR / "metabolic_syndrome_labeled_dataset.csv"
 
 # ATP III 기본 cut-off (연구 목적 참고용)
-WAIST_MALE_CUTOFF = 102.0
-WAIST_FEMALE_CUTOFF = 88.0
+WAIST_MALE_CUTOFF = 90.0
+WAIST_FEMALE_CUTOFF = 80.0
 TG_CUTOFF = 150.0
 HDL_MALE_CUTOFF = 40.0
 HDL_FEMALE_CUTOFF = 50.0
@@ -73,13 +73,16 @@ def main() -> None:
         + c_bp.astype("float")
         + c_glu.astype("float")
     )
-    merged["atpiii_criteria_count"] = criteria_count
+    merged["metabolic_criteria_count"] = criteria_count
     merged["metabolic_syndrome"] = (criteria_count >= 3).astype(int)
 
     keep_cols = [
         "ID",
         "nutrition_intake",
         "nutrition_intake_text",
+        "nutrition_prob_0",
+        "nutrition_prob_1",
+        "nutrition_prob_2",
         "sex",
         "age",
         "HE_ht",
@@ -90,7 +93,7 @@ def main() -> None:
         "HE_sbp",
         "HE_dbp",
         "HE_glu",
-        "atpiii_criteria_count",
+        "metabolic_criteria_count",
         "metabolic_syndrome",
     ]
     out_df = merged[keep_cols].copy()

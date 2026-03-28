@@ -42,6 +42,7 @@ python src/preprocess.py
 python src/train.py
 python src/evaluate.py
 python src/predict.py
+python src/analyze.py
 ```
 
 ## Directory Roles
