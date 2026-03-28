@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn.inspection import PartialDependenceDisplay, permutation_importance
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 
@@ -155,10 +156,55 @@ def main() -> None:
     plt.savefig(out_dir / "age_group_performance.png", dpi=300)
     plt.close()
 
+    # Permutation importance on test split
+    perm = permutation_importance(
+        model,
+        x_test_imp,
+        y_test,
+        scoring="roc_auc",
+        n_repeats=10,
+        random_state=42,
+        n_jobs=1,
+    )
+    perm_df = pd.DataFrame(
+        {
+            "feature": feature_cols,
+            "importance_mean": perm.importances_mean,
+            "importance_std": perm.importances_std,
+        }
+    ).sort_values("importance_mean", ascending=False)
+    perm_df.to_csv(out_dir / "permutation_importance.csv", index=False, encoding="utf-8-sig")
+
+    # Focused PDP for smoothed dietary pattern features
+    target_pattern_features = [
+        "pattern_fat_density_mean",
+        "pattern_carb_density_mean",
+        "pattern_sodium_density_mean",
+    ]
+    pdp_features = [f for f in target_pattern_features if f in feature_cols]
+    if pdp_features:
+        fig, axes = plt.subplots(1, len(pdp_features), figsize=(5 * len(pdp_features), 4))
+        if len(pdp_features) == 1:
+            axes = [axes]
+        PartialDependenceDisplay.from_estimator(
+            model,
+            x_test_imp,
+            features=pdp_features,
+            ax=axes,
+            kind="average",
+        )
+        fig.suptitle("PDP: Smoothed Dietary Pattern Features", y=1.05)
+        fig.tight_layout()
+        fig.savefig(out_dir / "pdp_pattern_features.png", dpi=300)
+        plt.close(fig)
+
     print(f"[ANALYZE] Saved: {out_dir / 'feature_correlation_matrix.csv'}")
     print(f"[ANALYZE] Saved: {out_dir / 'feature_correlation_heatmap.png'}")
     print(f"[ANALYZE] Saved: {out_dir / 'age_group_performance.csv'}")
     print(f"[ANALYZE] Saved: {out_dir / 'age_group_performance.png'}")
+    print(f"[ANALYZE] Saved: {out_dir / 'permutation_importance.csv'}")
+    if pdp_features:
+        print(f"[ANALYZE] Saved: {out_dir / 'pdp_pattern_features.png'}")
     print(age_perf.to_string(index=False))
 
 
