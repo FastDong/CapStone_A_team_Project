@@ -13,11 +13,13 @@
 
 1. `step1_build_nutrient_status.py`
 - `nutrient_2019.csv`를 `ID + N_DAY(일자)` 단위로 1차 집계 후, 개인별 하루섭취 중앙값으로 집계
+- 추가로 개인별 식사 패턴 스무딩 피처(`pattern_*`: 평균/변동성/과잉일 비율 등) 생성
 - KNN + Softmax 기반으로 영양상태(0:부족, 1:균형, 2:과잉) 생성
 - 출력: `../data/interim/nutrient_2019_person_level_with_status.csv`
 
 2. `step2_label_nhanes_nutrition_intake.py`
 - nutrient 데이터에서 학습한 패턴으로 NHANES에 `nutrition_intake` 라벨 전이
+- KNN 이웃 가중평균으로 `pattern_*` 스무딩 피처도 함께 전이
 - 출력: `../data/interim/nhanes_with_nutrition_intake_label.csv`
 
 3. `step3_label_metabolic_syndrome_atpiii.py`

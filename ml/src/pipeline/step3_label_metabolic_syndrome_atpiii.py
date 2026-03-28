@@ -96,6 +96,8 @@ def main() -> None:
         "metabolic_criteria_count",
         "metabolic_syndrome",
     ]
+    pattern_cols = [c for c in merged.columns if c.startswith("pattern_")]
+    keep_cols.extend(pattern_cols)
     out_df = merged[keep_cols].copy()
     out_df = out_df.dropna(
         subset=["nutrition_intake", "sex", "age", "HE_ht", "HE_wt", "HE_wc", "metabolic_syndrome"]

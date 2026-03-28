@@ -1,0 +1,38 @@
+[
+  {
+    "model": "full",
+    "n_features": 18,
+    "features": "nutrition_intake|nutrition_prob_2|waist_x_excess_prob|sex|HE_ht|HE_wt|HE_wc|age|pattern_energy_ratio_mean|pattern_energy_ratio_std|pattern_energy_ratio_iqr|pattern_excess_day_ratio|pattern_deficient_day_ratio|pattern_balanced_day_ratio|pattern_protein_density_mean|pattern_fat_density_mean|pattern_carb_density_mean|pattern_sodium_density_mean",
+    "default_accuracy": 0.8108759430008382,
+    "default_precision": 0.6319237641453246,
+    "default_recall": 0.4719750889679715,
+    "default_f1": 0.5403615991851286,
+    "roc_auc": 0.8663779658429326,
+    "best_f1_threshold": 0.36,
+    "best_f1": 0.6529829272971418,
+    "best_f1_recall": 0.7571174377224199,
+    "best_f1_precision": 0.5740303541315346,
+    "recall_priority_threshold": 0.23,
+    "recall_priority_recall": 0.8603202846975089,
+    "recall_priority_precision": 0.5052246603970741,
+    "recall_priority_f1": 0.6366030283080975
+  },
+  {
+    "model": "light",
+    "n_features": 11,
+    "features": "nutrition_intake|nutrition_prob_2|waist_x_excess_prob|sex|HE_ht|HE_wt|HE_wc|age|pattern_fat_density_mean|pattern_carb_density_mean|pattern_deficient_day_ratio",
+    "default_accuracy": 0.8105616093880972,
+    "default_precision": 0.6331719128329297,
+    "default_recall": 0.4653024911032028,
+    "default_f1": 0.5364102564102564,
+    "roc_auc": 0.8661910611576762,
+    "best_f1_threshold": 0.34,
+    "best_f1": 0.6516981132075472,
+    "best_f1_recall": 0.7682384341637011,
+    "best_f1_precision": 0.5658584534731324,
+    "recall_priority_threshold": 0.23,
+    "recall_priority_recall": 0.8558718861209964,
+    "recall_priority_precision": 0.5036649214659686,
+    "recall_priority_f1": 0.6341463414634146
+  }
+]

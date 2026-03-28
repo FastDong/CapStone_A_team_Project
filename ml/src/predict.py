@@ -55,15 +55,21 @@ def main() -> None:
 
     prob = model.predict_proba(x_imp)[:, 1]
     threshold = 0.5
+    threshold_recall = 0.5
     if metrics_file.exists():
         with open(metrics_file, "r", encoding="utf-8") as f:
             m = json.load(f)
             threshold = float(m.get("threshold_best_f1", 0.5))
+            threshold_recall = float(m.get("threshold_recall_priority", threshold))
 
     out = df[["ID"]].copy()
     out["metabolic_syndrome_risk_prob"] = prob
     out["pred_label_by_best_f1_threshold"] = (out["metabolic_syndrome_risk_prob"] >= threshold).astype(int)
+    out["pred_label_by_recall_priority_threshold"] = (
+        out["metabolic_syndrome_risk_prob"] >= threshold_recall
+    ).astype(int)
     out["used_threshold"] = threshold
+    out["used_recall_priority_threshold"] = threshold_recall
     print(out.head(10).to_string(index=False))
 
 

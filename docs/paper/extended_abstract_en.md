@@ -10,9 +10,8 @@ Metabolic syndrome targets are defined using five criteria, with Korean waist cu
 
 The final classifier is XGBoost with KNN-based missing value imputation and GridSearchCV (5-fold ROC-AUC) for hyperparameter selection. Input features are `nutrition_intake`, `nutrition_prob_2`, `waist_x_excess_prob`, `sex`, `HE_ht`, `HE_wt`, `HE_wc`, and `age`.
 
-At the default threshold (0.50), test performance is Accuracy 0.8092, F1 0.5430, Recall 0.4813, and ROC-AUC 0.8655. Threshold optimization over 0.10-0.90 yields a best F1 threshold of 0.29, improving F1 to 0.6519 and Recall to 0.8069 (with lower accuracy 0.7970). This demonstrates that ranking quality is strong and decision-threshold tuning is critical in imbalanced screening tasks.
+At the default threshold (0.50), test performance is Accuracy 0.8109, F1 0.5404, Recall 0.4720, and ROC-AUC 0.8664. Threshold optimization over 0.10-0.90 yields a best F1 threshold of 0.36, improving F1 to 0.6530 and Recall to 0.7571. A recall-priority threshold (0.23) further raises Recall to 0.8603 with Precision 0.5052. This demonstrates that ranking quality is strong and decision-threshold tuning is critical in imbalanced screening tasks.
 
 Age-stratified analysis shows increasing Recall/F1 with older age groups, while ROC-AUC tends to decrease. These findings suggest that group-specific calibration or threshold policies may further improve practical deployment.
 
 This work is intended as a health management aid for research and educational use, not as a medical diagnostic system.
-

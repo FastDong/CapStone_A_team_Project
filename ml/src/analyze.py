@@ -12,7 +12,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 
 
-FEATURE_COLS = [
+DEFAULT_FEATURE_COLS = [
     "nutrition_intake",
     "nutrition_prob_2",
     "waist_x_excess_prob",
@@ -56,6 +56,12 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(data_file, low_memory=False)
+    feature_cols = DEFAULT_FEATURE_COLS
+    if metrics_file.exists():
+        with open(metrics_file, "r", encoding="utf-8") as f:
+            m = json.load(f)
+            if isinstance(m.get("features"), list) and len(m["features"]) > 0:
+                feature_cols = m["features"]
     if "nutrition_prob_2" not in df.columns:
         raise ValueError("Missing nutrition_prob_2. Run preprocess.py first.")
 
@@ -63,8 +69,8 @@ def main() -> None:
     df["waist_x_excess_prob"] = pd.to_numeric(df["HE_wc"], errors="coerce") * df["nutrition_prob_2"]
     df["sex"] = encode_sex(df["sex"])
 
-    x = df[FEATURE_COLS].copy()
-    for col in FEATURE_COLS:
+    x = df[feature_cols].copy()
+    for col in feature_cols:
         if col != "sex":
             x[col] = pd.to_numeric(x[col], errors="coerce")
     y = pd.to_numeric(df[TARGET_COL], errors="coerce")
@@ -97,7 +103,7 @@ def main() -> None:
         metrics = json.load(f)
     best_threshold = float(metrics.get("threshold_best_f1", 0.5))
 
-    x_test_imp = pd.DataFrame(imputer.transform(x_test), columns=FEATURE_COLS, index=x_test.index)
+    x_test_imp = pd.DataFrame(imputer.transform(x_test), columns=feature_cols, index=x_test.index)
     prob = model.predict_proba(x_test_imp)[:, 1]
     pred = (prob >= best_threshold).astype(int)
 

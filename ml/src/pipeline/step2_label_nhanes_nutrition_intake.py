@@ -43,6 +43,25 @@ def encode_mixed_features(train_df: pd.DataFrame, target_df: pd.DataFrame) -> tu
     return x_train, x_target
 
 
+def weighted_neighbor_transfer(
+    neighbor_indices: np.ndarray,
+    neighbor_distances: np.ndarray,
+    source_values: np.ndarray,
+) -> np.ndarray:
+    weights = 1.0 / (neighbor_distances + 1e-6)
+    weighted_values = np.zeros((neighbor_indices.shape[0], source_values.shape[1]), dtype=np.float64)
+    for row_idx in range(neighbor_indices.shape[0]):
+        idxs = neighbor_indices[row_idx]
+        w = weights[row_idx]
+        vals = source_values[idxs]
+        w_sum = np.sum(w)
+        if w_sum <= 0:
+            weighted_values[row_idx] = np.nanmean(vals, axis=0)
+        else:
+            weighted_values[row_idx] = np.sum(vals * w.reshape(-1, 1), axis=0) / w_sum
+    return weighted_values
+
+
 def main() -> None:
     ensure_dirs()
     nutrient_df = pd.read_csv(NUTRIENT_PERSON_FILE, low_memory=False)
@@ -80,6 +99,21 @@ def main() -> None:
     class_values = np.array([0, 1, 2], dtype=int)
     pred = knn_predict_with_softmax(knn, x_target_scaled, class_values=class_values, temperature=1.0)
 
+    pattern_cols = [c for c in nutrient_df.columns if c.startswith("pattern_")]
+    transfer_pattern_df = pd.DataFrame(index=nhanes_df.index)
+    if pattern_cols:
+        source_pattern = train_df[pattern_cols].copy()
+        source_pattern = source_pattern.fillna(source_pattern.median(numeric_only=True))
+        source_pattern_values = source_pattern.to_numpy(dtype=np.float64)
+
+        distances, indices = knn.kneighbors(x_target_scaled, return_distance=True)
+        transferred_values = weighted_neighbor_transfer(
+            neighbor_indices=indices,
+            neighbor_distances=distances,
+            source_values=source_pattern_values,
+        )
+        transfer_pattern_df = pd.DataFrame(transferred_values, columns=pattern_cols, index=nhanes_df.index)
+
     out_df = nhanes_df.copy()
     out_df["nutrition_intake"] = pred.labels.astype(int)
     out_df["nutrition_intake_text"] = out_df["nutrition_intake"].map(
@@ -88,6 +122,8 @@ def main() -> None:
     out_df["nutrition_prob_0"] = pred.probs[:, 0]
     out_df["nutrition_prob_1"] = pred.probs[:, 1]
     out_df["nutrition_prob_2"] = pred.probs[:, 2]
+    if not transfer_pattern_df.empty:
+        out_df = pd.concat([out_df, transfer_pattern_df], axis=1)
 
     out_df.to_csv(OUT_FILE, index=False, encoding="utf-8-sig")
     print(f"[STEP2] Saved: {OUT_FILE}")
