@@ -202,29 +202,71 @@ def save_bundle_models(target: str, bundle: dict) -> None:
         model.save_model(str(MODEL_DIR / f"regressor_{target}_sex_{sex_key}.json"))
 
 
-def plot_scatter(y_true: pd.Series, y_pred: np.ndarray, target: str, suffix: str) -> None:
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.scatter(y_true, y_pred, alpha=0.35, s=18)
-    lo, hi = float(min(np.min(y_true), np.min(y_pred))), float(max(np.max(y_true), np.max(y_pred)))
-    ax.plot([lo, hi], [lo, hi], "--", color="red")
-    ax.set_title(f"Actual vs Predicted ({target}, {suffix})")
-    ax.set_xlabel("Actual")
-    ax.set_ylabel("Predicted")
-    ax.grid(alpha=0.3)
+def _percentile_limits(values: np.ndarray, low: float = 1.0, high: float = 99.0, margin_ratio: float = 0.05) -> tuple[float, float]:
+    lo = float(np.nanpercentile(values, low))
+    hi = float(np.nanpercentile(values, high))
+    if hi <= lo:
+        lo = float(np.nanmin(values))
+        hi = float(np.nanmax(values))
+    margin = max((hi - lo) * margin_ratio, 1e-6)
+    return lo - margin, hi + margin
+
+
+def plot_scatter(
+    y_true: pd.Series,
+    baseline_pred: np.ndarray,
+    improved_pred: np.ndarray,
+    target: str,
+    suffix: str,
+) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(5.8, 2.9), sharex=True, sharey=True)
+    combined = np.concatenate([y_true.to_numpy(dtype=float), baseline_pred.astype(float), improved_pred.astype(float)])
+    lo, hi = _percentile_limits(combined, low=1.0, high=99.0, margin_ratio=0.04)
+    series = [
+        ("Baseline", baseline_pred, "#f28e2b"),
+        ("Improved", improved_pred, "#4e79a7"),
+    ]
+    for ax, (label, pred, color) in zip(axes, series):
+        ax.scatter(y_true, y_true, alpha=0.25, s=8, color="#9e9e9e", label="Actual")
+        ax.scatter(y_true, pred, alpha=0.55, s=10, color=color, label=f"{label} prediction")
+        ax.plot([lo, hi], [lo, hi], "--", color="black", linewidth=1.0, label="Ideal line")
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_title(label)
+        ax.set_xlabel("Actual")
+        ax.grid(alpha=0.3)
+    axes[0].set_ylabel("Value")
+    axes[0].legend(loc="upper left", fontsize=6.5, frameon=True)
+    fig.suptitle(f"Actual vs Prediction Scatter ({target})", fontsize=10)
     fig.tight_layout()
     fig.savefig(REG_PLOTS_DIR / f"actual_vs_predicted_{target}.png", dpi=300)
     plt.close(fig)
 
 
-def plot_residual(y_true: pd.Series, y_pred: np.ndarray, target: str, suffix: str) -> None:
-    resid = y_true - y_pred
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    ax.scatter(y_pred, resid, alpha=0.35, s=18)
+def plot_residual(
+    y_true: pd.Series,
+    baseline_pred: np.ndarray,
+    improved_pred: np.ndarray,
+    target: str,
+    suffix: str,
+) -> None:
+    baseline_resid = y_true - baseline_pred
+    improved_resid = y_true - improved_pred
+    x_vals = np.concatenate([baseline_pred.astype(float), improved_pred.astype(float)])
+    y_vals = np.concatenate([baseline_resid.to_numpy(dtype=float), improved_resid.to_numpy(dtype=float)])
+    x_lo, x_hi = _percentile_limits(x_vals, low=1.0, high=99.0, margin_ratio=0.04)
+    y_lo, y_hi = _percentile_limits(y_vals, low=1.0, high=99.0, margin_ratio=0.08)
+    fig, ax = plt.subplots(figsize=(3.5, 2.25))
+    ax.scatter(baseline_pred, baseline_resid, alpha=0.45, s=9, color="#f28e2b", label="Baseline")
+    ax.scatter(improved_pred, improved_resid, alpha=0.45, s=9, color="#4e79a7", label="Improved")
     ax.axhline(0, linestyle="--", color="red")
-    ax.set_title(f"Residual Plot ({target}, {suffix})")
+    ax.set_xlim(x_lo, x_hi)
+    ax.set_ylim(y_lo, y_hi)
+    ax.set_title(f"Residual Plot\n({target})")
     ax.set_xlabel("Predicted")
     ax.set_ylabel("Actual - Predicted")
     ax.grid(alpha=0.3)
+    ax.legend(loc="upper right", fontsize=7, frameon=True)
     fig.tight_layout()
     fig.savefig(REG_PLOTS_DIR / f"residual_plot_{target}.png", dpi=300)
     plt.close(fig)
@@ -297,8 +339,8 @@ def main() -> None:
         save_bundle_models(target, bundle)
         fi_rows.extend(feature_importance_rows(target, bundle, sex_tr))
         suffix = f"{best['group_mode']}, {best['transform']}, {best['objective']}"
-        plot_scatter(y_te, best_te_valid, target, suffix)
-        plot_residual(y_te, best_te_valid, target, suffix)
+        plot_scatter(y_te, base_te, best_te_valid, target, suffix)
+        plot_residual(y_te, base_te, best_te_valid, target, suffix)
         pred_name = f"pred_{target.replace('HE_', '')}"
         stage_pred_train[pred_name] = best_oof
         stage_pred_test[pred_name] = best_te_valid
