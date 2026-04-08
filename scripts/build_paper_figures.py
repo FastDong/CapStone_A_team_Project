@@ -28,44 +28,6 @@ def save(fig: plt.Figure, path: Path) -> None:
     plt.close(fig)
 
 
-def build_regression_improvement_summary(rows: list[dict[str, str]]) -> None:
-    targets = []
-    baseline_rmse, improved_rmse = [], []
-    baseline_r2, improved_r2 = [], []
-
-    for target in ["HE_glu", "HE_sbp", "HE_chol"]:
-        target_rows = [r for r in rows if r["target"] == target]
-        base = next(r for r in target_rows if r["scenario"] == "baseline")
-        imp = next(r for r in target_rows if r["scenario"] == "improved")
-        targets.append(target.replace("HE_", "").upper())
-        baseline_rmse.append(float(base["RMSE"]))
-        improved_rmse.append(float(imp["RMSE"]))
-        baseline_r2.append(float(base["R2"]))
-        improved_r2.append(float(imp["R2"]))
-
-    x = np.arange(len(targets))
-    width = 0.35
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4.2))
-
-    axes[0].bar(x - width / 2, baseline_rmse, width, label="Baseline", color="#e07a5f")
-    axes[0].bar(x + width / 2, improved_rmse, width, label="Improved", color="#3d5a80")
-    axes[0].set_title("Regression RMSE")
-    axes[0].set_xticks(x, targets)
-    axes[0].set_ylabel("RMSE")
-    axes[0].legend(frameon=False)
-    axes[0].grid(axis="y", alpha=0.25)
-
-    axes[1].bar(x - width / 2, baseline_r2, width, label="Baseline", color="#e07a5f")
-    axes[1].bar(x + width / 2, improved_r2, width, label="Improved", color="#3d5a80")
-    axes[1].set_title("Regression R2")
-    axes[1].set_xticks(x, targets)
-    axes[1].set_ylabel("R2")
-    axes[1].legend(frameon=False)
-    axes[1].grid(axis="y", alpha=0.25)
-
-    save(fig, REG_PLOTS_DIR / "regression_improvement_summary.png")
-
-
 def build_regression_benchmark(rows: list[dict[str, str]]) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.6), sharex=False)
     palette = {
@@ -161,13 +123,11 @@ def build_classification_threshold_summary(rows: list[dict[str, str]]) -> None:
 
 def main() -> None:
     ensure_dirs()
-    regression_rows = read_csv(METRICS_DIR / "regression_baseline_vs_improved.csv")
     benchmark_rows = read_csv(METRICS_DIR / "regression_model_benchmark.csv")
     importance_rows = read_csv(METRICS_DIR / "feature_importance_regression.csv")
-    classification_rows = read_csv(METRICS_DIR / "classification_metrics.csv")
+    classification_rows = read_csv(METRICS_DIR / "classification_metrics_best_regression_models.csv")
 
     plt.style.use("seaborn-v0_8-whitegrid")
-    build_regression_improvement_summary(regression_rows)
     build_regression_benchmark(benchmark_rows)
     build_regression_feature_importance(importance_rows)
     build_classification_default_summary(classification_rows)

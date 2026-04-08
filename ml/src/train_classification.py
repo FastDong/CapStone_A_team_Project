@@ -321,12 +321,6 @@ def main() -> None:
 
     _print_section("5) Save Metrics / Predictions / Curves")
     metrics_df = pd.DataFrame(metrics_rows)
-    metrics_df.to_csv(
-        METRICS_DIR / "classification_metrics_threshold_optimized.csv",
-        index=False,
-        encoding="utf-8-sig",
-    )
-    # compatibility export
     metrics_df.to_csv(METRICS_DIR / "classification_metrics.csv", index=False, encoding="utf-8-sig")
 
     prediction_cols.to_csv(DATA_OUTPUT_DIR / "final_predictions.csv", index=False, encoding="utf-8-sig")
@@ -347,7 +341,6 @@ def main() -> None:
     fig.savefig(CLASSIFICATION_PLOTS_DIR / "roc_curve.png", dpi=300)
     plt.close(fig)
 
-    print(f"Saved: {METRICS_DIR / 'classification_metrics_threshold_optimized.csv'}")
     print(f"Saved: {METRICS_DIR / 'classification_metrics.csv'}")
     print(f"Saved: {DATA_OUTPUT_DIR / 'final_predictions.csv'}")
     print(f"Saved: {METRICS_DIR / 'feature_importance_classification.csv'}")

@@ -23,6 +23,20 @@ This implementation is split into two scripts:
   - Model 3: body + actual health indicators (`HE_*` + body)
 - Saves classification metrics, confusion matrices, ROC curve, feature importances, and final predictions
 
+For the final paper workflow, additional helper scripts are used:
+
+3. `ml/src/benchmark_regression_models.py`
+- Compares `xgboost_ref`, `lightgbm`, `extra_trees`, `random_forest`, `ridge`
+- Saves target-wise regression benchmark results
+
+4. `ml/src/build_stage2_best_regression_input.py`
+- Selects the best regression model per target
+- Builds `stage2_input_with_best_models_predictions.csv` for the final paper evaluation
+
+5. `ml/src/evaluate_classification_best_regression.py`
+- Evaluates the 3 classification variants using the best per-target regression predictions
+- Saves the final paper classification metrics
+
 ## Run
 
 From repository root:
@@ -41,12 +55,15 @@ Outputs are grouped to keep the folder readable:
   - `regression_baseline_vs_improved.csv`
   - `regression_experiment_results.csv`
   - `classification_metrics.csv`
-  - `classification_metrics_threshold_optimized.csv`
+  - `classification_metrics_best_regression_models.csv`
   - `feature_importance_regression.csv`
   - `feature_importance_classification.csv`
+  - `regression_model_benchmark.csv`
+  - `regression_predict_metrics_best_models.csv`
   - `threshold_table_*.csv`
 - `ml/outputs/data/`
   - `stage2_input_with_predictions.csv`
+  - `stage2_input_with_best_models_predictions.csv`
   - `regression_test_predictions.csv`
   - `final_predictions.csv`
 - `ml/outputs/plots/regression/`
