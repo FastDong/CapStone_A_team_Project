@@ -1,0 +1,153 @@
+\documentclass[10pt,twocolumn]{article}
+\usepackage[a4paper,margin=1.8cm]{geometry}
+\usepackage{kotex}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\setlength{\columnsep}{0.7cm}
+\setlength{\parskip}{0.3em}
+\setlength{\parindent}{1em}
+\titleformat{\section}{\bfseries\normalsize}{\thesection.}{0.4em}{}
+\titleformat{\subsection}{\bfseries\normalsize}{\thesubsection}{0.4em}{}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue}
+
+\title{\textbf{비침습 입력 기반 대사증후군 위험 분류:\\생활패턴 스무딩 피처, 라벨 전이, 임계값 최적화 기반 XGBoost 연구}}
+\author{CapStone A Team}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+본 연구는 혈액검사 없이 수집 가능한 비침습 입력(연령, 성별, 키, 체중, 허리둘레, 영양섭취 상태)으로 대사증후군 위험을 분류하는 머신러닝 파이프라인을 제안한다.
+데이터셋 간 직접 병합이 어려운 상황을 해결하기 위해 라벨 전이(label transfer) 전략과 생활패턴 스무딩 피처를 도입하였다.
+XGBoost를 GridSearchCV(ROC-AUC 기준)로 최적화한 결과, 기본 임계값(0.50)에서 Accuracy 0.8109, F1 0.5404, ROC-AUC 0.8664를 보였고,
+F1 최적 임계값(0.36)에서 F1 0.6530, Recall 0.7571로 개선되었다.
+Recall 우선 정책(0.23, precision$\ge$0.50)에서는 Recall 0.8603을 달성했다.
+본 결과는 선별 서비스에서 모델 선택뿐 아니라 임계값 운영정책이 핵심임을 보여준다.
+\end{abstract}
+
+\noindent\textbf{주요어:} 대사증후군, 비침습 분류, 라벨 전이, 생활패턴 스무딩, XGBoost, 임계값 최적화
+
+\section{서론}
+대사증후군은 심혈관계 질환 및 제2형 당뇨병의 선행 위험군 식별에 중요한 임상 개념이다.
+그러나 실제 사용자 환경에서는 혈액검사 기반 정밀 진단 이전 단계에서, 비침습 정보 기반 선별 도구가 먼저 요구된다.
+본 연구는 이질 코호트 환경에서 비침습 입력만으로 대사증후군 위험을 분류하는 실무형 파이프라인을 제안한다.
+
+본 연구의 핵심 질문은 다음과 같다.
+\begin{enumerate}[leftmargin=1.2em]
+\item 직접 병합이 어려운 건강/영양 데이터 간 정보 연결이 가능한가?
+\item 생활패턴 스무딩 피처가 분류 성능을 개선하는가?
+\item 선별 목적에서 고정 임계값(0.50)보다 정책형 임계값이 유리한가?
+\end{enumerate}
+
+\section{관련 연구}
+대사증후군 기준은 국제 가이드라인 및 국내 적용 기준을 바탕으로 사용하였다.
+비침습 선별의 장점은 접근성과 반복성이나, 입력 정보량 제약으로 인해 피처 공학과 threshold 설계가 성능을 좌우한다.
+본 연구는 라벨 전이, 스무딩 피처, 운영 임계값 정책을 통합적으로 다룬다는 점에서 차별성을 가진다.
+
+\section{데이터 및 방법}
+\subsection{데이터}
+건강 데이터는 \texttt{NHANES\_2017\_2023.csv}, 영양 데이터는 \texttt{nutrient\_2019.csv}를 사용하였다.
+학습/평가 분할은 stratified 8:2이며, train 38174건, test 9544건이다.
+
+\subsection{라벨 전이와 스무딩 피처}
+\texttt{nutrient\_2019}의 다중 식사기록을 개인 단위로 집계해 분포 통계(평균/표준편차/IQR), 과잉/부족/균형 일수 비율, 영양밀도 피처를 산출했다.
+이후 KNN 기반 라벨 전이로 NHANES 대상자에 영양 상태 라벨과 확률(\texttt{nutrition\_prob\_2})을 부여했다.
+핵심 상호작용 피처는 다음과 같다.
+\[
+\texttt{waist\_x\_excess\_prob}=\texttt{HE\_wc}\times \texttt{nutrition\_prob\_2}
+\]
+
+\subsection{타깃 정의}
+다음 5개 기준 중 3개 이상 충족 시 대사증후군 양성(1)으로 라벨링했다.
+\begin{itemize}[leftmargin=1.2em]
+\item 복부비만: 남 $\ge$90cm, 여 $\ge$80cm
+\item 중성지방: TG $\ge$150
+\item HDL 저하: 남 $<$40, 여 $<$50
+\item 혈압: SBP $\ge$130 또는 DBP $\ge$85
+\item 공복혈당: glucose $\ge$100
+\end{itemize}
+
+\subsection{모델 및 평가}
+XGBoost를 사용하고, 결측치는 KNNImputer로 보정했다.
+GridSearchCV(5-fold, ROC-AUC) 최적 파라미터는
+\texttt{colsample\_bytree=0.8}, \texttt{learning\_rate=0.01},
+\texttt{max\_depth=5}, \texttt{n\_estimators=200}, \texttt{subsample=0.8}이다.
+임계값은 0.10--0.90 범위를 0.01 간격으로 탐색했다.
+
+\section{결과}
+\subsection{정책별 성능}
+\begin{table}[h]
+\centering
+\caption{임계값 정책별 성능(Full 모델)}
+\begin{tabular}{lccccc}
+\toprule
+Policy & Thr. & Acc. & Prec. & Rec. & F1 \\
+\midrule
+Default & 0.50 & 0.8109 & 0.6319 & 0.4720 & 0.5404 \\
+F1-opt & 0.36 & 0.8105 & 0.5740 & 0.7571 & 0.6530 \\
+Recall-opt & 0.23 & 0.7687 & 0.5052 & 0.8603 & 0.6366 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+기본 임계값은 정밀도 측면에서 유리하지만 재현율이 낮다.
+F1 최적 정책은 정밀도 감소를 제한하면서 재현율을 크게 개선한다.
+Recall 우선 정책은 미탐 최소화 시나리오에서 효과적이다.
+
+\subsection{A/B 비교}
+\begin{table}[h]
+\centering
+\caption{Full vs Light 비교}
+\begin{tabular}{lcccc}
+\toprule
+Model & \#Feat. & Default F1 & AUC & Best F1 \\
+\midrule
+Full & 18 & 0.5404 & 0.8664 & 0.6530 \\
+Light & 11 & 0.5364 & 0.8662 & 0.6517 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Full 모델이 F1과 AUC에서 근소 우세하여 최종 운영 모델로 선정하였다.
+
+\subsection{연령대별 분석}
+연령대 분석에서는 고연령군으로 갈수록 Recall/F1이 상승하는 경향이 관찰되었다.
+이는 단일 임계값 운영의 한계를 시사하며, 향후 연령군별 threshold 조정 가능성을 제안한다.
+
+\section{논의}
+본 연구는 이질 코호트 간 직접 병합이 어려운 환경에서 라벨 전이 기반 접근이 실무적으로 유효함을 보였다.
+또한 동일 모델에서도 임계값 정책에 따라 오류 구조가 크게 달라져, 운영 단계의 의사결정 규칙이 모델 구성의 일부가 되어야 함을 확인했다.
+
+생활패턴 스무딩 피처의 개선폭은 소폭이지만 일관성이 있었다.
+이는 고잡음/부분관측 환경에서 과도한 복잡도보다 안정적 분포정보가 유효할 수 있음을 의미한다.
+
+\section{한계 및 윤리}
+주요 한계는 다음과 같다.
+\begin{enumerate}[leftmargin=1.2em]
+\item 라벨 전이 과정에서 전이 오차가 누적될 수 있음
+\item 단일 홀드아웃 기반 threshold 최적화의 재현성 한계
+\item 짧은 기록일수 분포로 장기 식습관 반영이 제한됨
+\end{enumerate}
+본 모델은 연구/건강관리 참고용이며 의료 진단, 치료, 처방을 대체하지 않는다.
+
+\section{결론}
+비침습 입력 기반 대사증후군 선별에서 라벨 전이와 생활패턴 스무딩은 유의미한 성능 확보에 기여했다.
+운영 기준으로는 Full 모델의 F1 최적 임계값(0.36)을 기본 정책으로, 미탐 최소화가 필요한 상황에서는 Recall 우선 임계값(0.23)을 보조 정책으로 사용할 수 있다.
+
+\section*{References}
+\begin{enumerate}[leftmargin=1.2em]
+\item Expert Panel on Detection, Evaluation, and Treatment of High Blood Cholesterol in Adults. Executive summary of the third report of the NCEP Adult Treatment Panel III. \textit{JAMA}. 2001;285(19):2486--2497.
+\item Alberti KGMM, Eckel RH, Grundy SM, et al. Harmonizing the metabolic syndrome: a joint interim statement of major international societies. \textit{Circulation}. 2009;120(16):1640--1645.
+\item Ministry of Health and Welfare (Korea), KDCA. KNHANES documentation.
+\item Pedregosa F, Varoquaux G, Gramfort A, et al. Scikit-learn: Machine Learning in Python. \textit{JMLR}. 2011;12:2825--2830.
+\item Chen T, Guestrin C. XGBoost: A scalable tree boosting system. \textit{KDD}. 2016:785--794.
+\item Troyanskaya O, Cantor M, Sherlock G, et al. Missing value estimation methods for DNA microarrays. \textit{Bioinformatics}. 2001;17(6):520--525.
+\end{enumerate}
+
+\end{document}
+
