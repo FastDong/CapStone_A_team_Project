@@ -6,11 +6,17 @@ This implementation is split into two scripts:
 - Loads `data/processed/final_dataset_with_label.csv`
 - Applies preprocessing (sex encoding, missing summary, train-only imputation)
 - Trains 3 regression models for health indicators: `HE_glu`, `HE_sbp`, `HE_chol`
+- Compares target-specific settings:
+  - per-target hyperparameter sets
+  - optional `log1p` target transform
+  - `reg:squarederror` vs `reg:pseudohubererror`
+  - engineered features such as BMI, macro-energy ratios, and body-composition interactions
+  - global vs sex-group-aware regression
 - Generates out-of-fold train predictions (`pred_glu`, `pred_sbp`, `pred_chol`) to avoid leakage
-- Saves regression metrics and stage-2 input dataset
+- Saves baseline-vs-improved regression metrics, experiment tables, test prediction tables, scatter/residual plots, and the stage-2 input dataset
 
 2. `ml/src/train_classification.py`
-- Loads `ml/outputs/stage2_input_with_predictions.csv`
+- Loads `ml/outputs/data/stage2_input_with_predictions.csv`
 - Trains and compares:
   - Model 1: body-only (`WHtR`, `HE_wt`, `age`, `sex`)
   - Model 2: body + predicted health indicators (`pred_*` + body)
@@ -22,23 +28,44 @@ This implementation is split into two scripts:
 From repository root:
 
 ```bash
-python ml/src/train_regression.py
-python ml/src/train_classification.py
+conda run -n machine python ml/src/train_regression.py
+conda run -n machine python ml/src/train_classification.py
 ```
 
 ## Main Outputs
 
-- `ml/outputs/regression_metrics.csv`
-- `ml/outputs/classification_metrics.csv`
-- `ml/outputs/final_predictions.csv`
-- `ml/outputs/feature_importance_regression.csv`
-- `ml/outputs/feature_importance_classification.csv`
-- `ml/outputs/roc_curve.png`
-- `ml/outputs/confusion_matrix_body_only.png`
-- `ml/outputs/confusion_matrix_predicted.png`
-- `ml/outputs/confusion_matrix_actual.png`
-- `ml/outputs/feature_importance_body_only_classifier.png`
-- `ml/outputs/feature_importance_predicted_classifier.png`
-- `ml/outputs/feature_importance_actual_classifier.png`
+Outputs are grouped to keep the folder readable:
+
+- `ml/outputs/metrics/`
+  - `regression_metrics.csv`
+  - `regression_baseline_vs_improved.csv`
+  - `regression_experiment_results.csv`
+  - `classification_metrics.csv`
+  - `classification_metrics_threshold_optimized.csv`
+  - `feature_importance_regression.csv`
+  - `feature_importance_classification.csv`
+  - `threshold_table_*.csv`
+- `ml/outputs/data/`
+  - `stage2_input_with_predictions.csv`
+  - `regression_test_predictions.csv`
+  - `final_predictions.csv`
+- `ml/outputs/plots/regression/`
+  - `actual_vs_predicted_HE_glu.png`
+  - `actual_vs_predicted_HE_sbp.png`
+  - `actual_vs_predicted_HE_chol.png`
+  - `residual_plot_HE_glu.png`
+  - `residual_plot_HE_sbp.png`
+  - `residual_plot_HE_chol.png`
+- `ml/outputs/plots/classification/`
+  - `roc_curve.png`
+  - `confusion_matrix_*.png`
+  - `pr_curve_*.png`
+  - `threshold_f1_*.png`
+  - `feature_importance_*_classifier.png`
+- `ml/outputs/metadata/`
+  - `split_meta.json`
+  - `feature_medians_train.csv`
+  - `sex_mode_train.csv`
+  - `regression_selected_configs.json`
 
 This project is for preventive risk screening support and health-management guidance, not medical diagnosis.

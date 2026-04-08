@@ -23,8 +23,12 @@ from xgboost import XGBClassifier
 
 
 RANDOM_STATE = 42
-INPUT_FILE = Path("ml/outputs/stage2_input_with_predictions.csv")
 OUTPUT_DIR = Path("ml/outputs")
+METRICS_DIR = OUTPUT_DIR / "metrics"
+PLOTS_DIR = OUTPUT_DIR / "plots"
+CLASSIFICATION_PLOTS_DIR = PLOTS_DIR / "classification"
+DATA_OUTPUT_DIR = OUTPUT_DIR / "data"
+INPUT_FILE = DATA_OUTPUT_DIR / "stage2_input_with_predictions.csv"
 MODEL_DIR = Path("ml/models")
 CLS_TARGET = "MetS_Label"
 
@@ -35,10 +39,10 @@ MODEL_SPECS = [
         "prob_col": "prob_body_only",
         "pred_default_col": "pred_body_only_default",
         "pred_opt_col": "pred_body_only_optimized",
-        "threshold_plot": OUTPUT_DIR / "threshold_f1_body_only.png",
-        "pr_plot": OUTPUT_DIR / "pr_curve_body_only.png",
-        "confusion_plot": OUTPUT_DIR / "confusion_matrix_body_only.png",
-        "fi_plot": OUTPUT_DIR / "feature_importance_body_only_classifier.png",
+        "threshold_plot": CLASSIFICATION_PLOTS_DIR / "threshold_f1_body_only.png",
+        "pr_plot": CLASSIFICATION_PLOTS_DIR / "pr_curve_body_only.png",
+        "confusion_plot": CLASSIFICATION_PLOTS_DIR / "confusion_matrix_body_only.png",
+        "fi_plot": CLASSIFICATION_PLOTS_DIR / "feature_importance_body_only_classifier.png",
         "model_file": MODEL_DIR / "classifier_body_only.json",
     },
     {
@@ -47,10 +51,10 @@ MODEL_SPECS = [
         "prob_col": "prob_body_plus_predicted",
         "pred_default_col": "pred_body_plus_predicted_default",
         "pred_opt_col": "pred_body_plus_predicted_optimized",
-        "threshold_plot": OUTPUT_DIR / "threshold_f1_body_plus_predicted.png",
-        "pr_plot": OUTPUT_DIR / "pr_curve_body_plus_predicted.png",
-        "confusion_plot": OUTPUT_DIR / "confusion_matrix_predicted.png",
-        "fi_plot": OUTPUT_DIR / "feature_importance_predicted_classifier.png",
+        "threshold_plot": CLASSIFICATION_PLOTS_DIR / "threshold_f1_body_plus_predicted.png",
+        "pr_plot": CLASSIFICATION_PLOTS_DIR / "pr_curve_body_plus_predicted.png",
+        "confusion_plot": CLASSIFICATION_PLOTS_DIR / "confusion_matrix_predicted.png",
+        "fi_plot": CLASSIFICATION_PLOTS_DIR / "feature_importance_predicted_classifier.png",
         "model_file": MODEL_DIR / "classifier_predicted_health_indicators.json",
     },
     {
@@ -59,10 +63,10 @@ MODEL_SPECS = [
         "prob_col": "prob_body_plus_actual",
         "pred_default_col": "pred_body_plus_actual_default",
         "pred_opt_col": "pred_body_plus_actual_optimized",
-        "threshold_plot": OUTPUT_DIR / "threshold_f1_body_plus_actual.png",
-        "pr_plot": OUTPUT_DIR / "pr_curve_body_plus_actual.png",
-        "confusion_plot": OUTPUT_DIR / "confusion_matrix_actual.png",
-        "fi_plot": OUTPUT_DIR / "feature_importance_actual_classifier.png",
+        "threshold_plot": CLASSIFICATION_PLOTS_DIR / "threshold_f1_body_plus_actual.png",
+        "pr_plot": CLASSIFICATION_PLOTS_DIR / "pr_curve_body_plus_actual.png",
+        "confusion_plot": CLASSIFICATION_PLOTS_DIR / "confusion_matrix_actual.png",
+        "fi_plot": CLASSIFICATION_PLOTS_DIR / "feature_importance_actual_classifier.png",
         "model_file": MODEL_DIR / "classifier_actual_health_indicators.json",
     },
 ]
@@ -204,6 +208,9 @@ def plot_feature_importance(
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    METRICS_DIR.mkdir(parents=True, exist_ok=True)
+    CLASSIFICATION_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
     _print_section("1) Load Stage-2 Dataset")
@@ -257,7 +264,7 @@ def main() -> None:
         oof_prob = get_oof_probabilities(x_train, y_train, n_splits=5)
         best_thr, threshold_table = find_best_threshold(y_train, oof_prob)
         optimal_thresholds[name] = best_thr
-        threshold_table.to_csv(OUTPUT_DIR / f"threshold_table_{name}.csv", index=False, encoding="utf-8-sig")
+        threshold_table.to_csv(METRICS_DIR / f"threshold_table_{name}.csv", index=False, encoding="utf-8-sig")
         plot_threshold_f1(
             table=threshold_table,
             title=f"Threshold vs F1 ({name})",
@@ -314,14 +321,18 @@ def main() -> None:
 
     _print_section("5) Save Metrics / Predictions / Curves")
     metrics_df = pd.DataFrame(metrics_rows)
-    metrics_df.to_csv(OUTPUT_DIR / "classification_metrics_threshold_optimized.csv", index=False, encoding="utf-8-sig")
+    metrics_df.to_csv(
+        METRICS_DIR / "classification_metrics_threshold_optimized.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
     # compatibility export
-    metrics_df.to_csv(OUTPUT_DIR / "classification_metrics.csv", index=False, encoding="utf-8-sig")
+    metrics_df.to_csv(METRICS_DIR / "classification_metrics.csv", index=False, encoding="utf-8-sig")
 
-    prediction_cols.to_csv(OUTPUT_DIR / "final_predictions.csv", index=False, encoding="utf-8-sig")
+    prediction_cols.to_csv(DATA_OUTPUT_DIR / "final_predictions.csv", index=False, encoding="utf-8-sig")
 
     fi_df = pd.concat(fi_all, ignore_index=True)
-    fi_df.to_csv(OUTPUT_DIR / "feature_importance_classification.csv", index=False, encoding="utf-8-sig")
+    fi_df.to_csv(METRICS_DIR / "feature_importance_classification.csv", index=False, encoding="utf-8-sig")
 
     fig, ax = plt.subplots(figsize=(7, 5))
     for model_name, prob, auc_val in roc_inputs:
@@ -333,14 +344,14 @@ def main() -> None:
     ax.set_title("ROC Curve (3 Models)")
     ax.legend(loc="lower right")
     fig.tight_layout()
-    fig.savefig(OUTPUT_DIR / "roc_curve.png", dpi=300)
+    fig.savefig(CLASSIFICATION_PLOTS_DIR / "roc_curve.png", dpi=300)
     plt.close(fig)
 
-    print(f"Saved: {OUTPUT_DIR / 'classification_metrics_threshold_optimized.csv'}")
-    print(f"Saved: {OUTPUT_DIR / 'classification_metrics.csv'}")
-    print(f"Saved: {OUTPUT_DIR / 'final_predictions.csv'}")
-    print(f"Saved: {OUTPUT_DIR / 'feature_importance_classification.csv'}")
-    print(f"Saved: {OUTPUT_DIR / 'roc_curve.png'}")
+    print(f"Saved: {METRICS_DIR / 'classification_metrics_threshold_optimized.csv'}")
+    print(f"Saved: {METRICS_DIR / 'classification_metrics.csv'}")
+    print(f"Saved: {DATA_OUTPUT_DIR / 'final_predictions.csv'}")
+    print(f"Saved: {METRICS_DIR / 'feature_importance_classification.csv'}")
+    print(f"Saved: {CLASSIFICATION_PLOTS_DIR / 'roc_curve.png'}")
     for spec in MODEL_SPECS:
         print(f"Saved: {spec['threshold_plot']}")
         print(f"Saved: {spec['pr_plot']}")
